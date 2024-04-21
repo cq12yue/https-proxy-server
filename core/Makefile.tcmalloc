@@ -1,0 +1,31 @@
+#Makefile for core subdir and main program
+
+src_path := .
+out_path := ../../output/use_tcmalloc
+share_path := ../../output/lib
+macros := "_USE_MEM_POOL=0"
+share_lib := "base tcmalloc netcomm pthread event log4cplus" 
+out_name := proxy_server
+
+.PHONY: all debug release clean cleand cleanr
+
+all: debug release
+clean: cleand cleanr
+	
+debug: out_path := $(out_path)/debug
+debug: share_path := $(share_path)/debug
+release: out_path := $(out_path)/release
+release: share_path := $(share_path)/release
+
+debug:
+	$(MAKE) -f ../Makefile.in exe MODE=debug OUT_NAME=$(out_name) SRC_PATH=$(src_path) OUT_PATH=$(out_path) SHARE_LIB=$(share_lib) MACROS=$(macros) SHARE_PATH=$(share_path)
+
+release:
+	$(MAKE) -f ../Makefile.in exe MODE=release OUT_NAME=$(out_name) SRC_PATH=$(src_path) OUT_PATH=$(out_path) SHARE_LIB=$(share_lib) MACROS=$(macros) SHARE_PATH=$(share_path)
+
+cleand:
+	$(MAKE) -f ../Makefile.in clean MODE=debug OUT_NAME=$(out_name) SRC_PATH=$(src_path)
+
+cleanr:
+	$(MAKE) -f ../Makefile.in clean MODE=release OUT_NAME=$(out_name) SRC_PATH=$(src_path)
+
