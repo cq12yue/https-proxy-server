@@ -1,0 +1,25 @@
+#Makefile for mem subdir and memory module
+
+out_name := mem
+src_path := .
+out_path := ../../output/lib
+
+.PHONY: all debug release clean cleand cleanr
+
+all: debug release
+clean: cleand cleanr
+	
+debug: out_path := $(out_path)/debug
+release: out_path := $(out_path)/release
+
+debug:
+	$(MAKE) -f ../Makefile.in lib MODE=debug OUT_NAME=$(out_name) SRC_PATH=$(src_path) OUT_PATH=$(out_path) #MACROS="NDEBUG"
+
+release:
+	$(MAKE) -f ../Makefile.in lib MODE=release OUT_NAME=$(out_name) SRC_PATH=$(src_path) OUT_PATH=$(out_path)
+
+cleand:
+	$(MAKE) -f ../Makefile.in clean MODE=debug OUT_NAME=$(out_name) SRC_PATH=$(src_path)
+
+cleanr:
+	$(MAKE) -f ../Makefile.in clean MODE=release OUT_NAME=$(out_name) SRC_PATH=$(src_path)
