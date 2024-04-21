@@ -1,45 +1,22 @@
-#include "function.h"
+#ifndef _NETCOMM_FUNCTION_H
+#define _NETCOMM_FUNCTION_H
+
+#include <stdint.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/tcp.h>
 
-bool netcomm::set_block_attr(int sock, bool block)
+namespace netcomm 
 {
-	int opts = fcntl(sock,F_GETFL);
-	if (opts < 0)
-		return false;
-	opts = block ? (opts & ~O_NONBLOCK):(opts | O_NONBLOCK);
-	return -1 != fcntl(sock,F_SETFL,opts);
-}
-
-bool netcomm::get_block_attr(int sock, bool& block)
-{
-	int opts = fcntl(sock,F_GETFL);
-	if (opts < 0 )
-		return false;
-	block = (opts & O_NONBLOCK);
-	return true;
-}
-
-bool netcomm::enable_keepalive(int sock,int idle,int intv,int cnt)    
-{    
-	int alive = 1;
-	if (setsockopt(sock,SOL_SOCKET,SO_KEEPALIVE,&alive,sizeof(alive)))   
-		return false;    
-
-	if (setsockopt(sock,SOL_TCP,TCP_KEEPIDLE,&idle,sizeof(idle)))
-		return false;    
-
-	if (setsockopt(sock,SOL_TCP,TCP_KEEPINTVL,&intv,sizeof(intv)))    
-		return false;    
+	#define SAFE_CLOSE_PIPE(fd) do{::close(fd[0]);::close(fd[1]);fd[0]=fd[1]=-1;}while(0)
+	#define SAFE_CLOSE_SOCKETPAIR(fd) SAFE_CLOSE_PIPE(fd)
+	#define SAFE_CLOSE_FD(fd) do{::close(fd);fd=-1;}while(0)
 	
-	return 0==setsockopt(sock,SOL_TCP,TCP_KEEPCNT,&cnt,sizeof(cnt));
-}    
+	bool set_block_attr(int sock, bool block);
+	bool get_block_attr(int sock, bool& block);
+	
+	bool enable_keepalive(int sock,int idle,int intv,int cnt);
+	bool disable_keepalive(int sock);
 
-bool netcomm::disable_keepalive(int sock)
-{
-	int alive = 0;
-	return 0==setsockopt(sock,SOL_SOCKET,SO_KEEPALIVE,&alive,sizeof(alive));   
+	#define IN_LOOPBACK(a) ((((uint32_t)(a))&0xff000000)==0xff000000)
 }
+
+#endif
