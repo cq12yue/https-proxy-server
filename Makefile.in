@@ -1,0 +1,92 @@
+#Makefile.in
+
+override INC_PATH += $(SRC_PATH) /usr/include /usr/local/include
+override INC_PATH := $(addprefix -I,$(INC_PATH))
+override SHARE_PATH += /usr/lib /usr/local/lib
+override SHARE_PATH := $(addprefix -L,$(SHARE_PATH))
+override SHARE_LIB  := $(if $(SHARE_LIB),$(addprefix -l,$(SHARE_LIB)))
+override STATIC_PATH := $(patsubst %/,%,$(STATIC_PATH)) 
+override STATIC_PATH := $(strip $(STATIC_PATH))
+override STATIC_LIB := $(if $(STATIC_PATH),$(if $(STATIC_LIB),$(addprefix $(STATIC_PATH)/,$(STATIC_LIB))))
+override SRC_PATH := $(patsubst %/,%,$(SRC_PATH))
+override MACROS := $(addprefix -D,$(MACROS))
+
+cxxflags := -fPIC -Wall $(MACROS)
+
+ifeq ($(MODE),debug)
+  cxxflags += -g
+  tmp_path := $(SRC_PATH)/debug
+else
+  cxxflags += -O2 -DNDEBUG 
+  tmp_path := $(SRC_PATH)/release
+endif
+
+lib_name := $(addprefix lib,$(OUT_NAME))
+
+srcs := $(wildcard $(SRC_PATH)/*.c) $(wildcard $(SRC_PATH)/*.cpp)
+deps := $(patsubst %.c,%.d,$(patsubst %.cpp,%.d,$(srcs)))
+deps := $(foreach dep,$(deps),$(notdir $(dep)))
+deps := $(addprefix $(tmp_path)/,$(deps))
+
+objs := $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(srcs)))
+objs := $(foreach obj,$(objs),$(notdir $(obj)))
+objs := $(addprefix $(tmp_path)/,$(objs))
+
+share_name  := $(tmp_path)/$(lib_name).so
+static_name := $(tmp_path)/$(lib_name).a
+exe_name    := $(tmp_path)/$(OUT_NAME)
+	
+override MACROS := $(if $(MACROS),$(addprefix -D,$(MACROS)))
+
+.PHONY: exe lib static share clean config
+
+#CXX		:= g++
+#ar		:= ar
+arflags	:= -rc
+
+define MKDIR
+if [ ! -d $(tmp_path) ]; then \
+mkdir $(tmp_path); \
+fi
+endef
+
+config:
+	@$(MKDIR)
+
+exe: config $(exe_name)
+
+lib: config static share
+
+static: $(static_name)
+	
+share: $(share_name)
+
+$(exe_name): $(objs) 
+	@echo "Linking to execute ($@ : $(objs))."
+	$(CXX) -o $@ $(objs) $(SHARE_PATH) $(SHARE_LIB) $(STATIC_LIB)
+	@cp -f $(exe_name) $(OUT_PATH) 
+		
+$(static_name): $(objs)
+	@echo "Archive to static library ($@ [$(objs)])."
+	$(AR) $(arflags) $@ $(objs)
+	@cp -f $(static_name) $(OUT_PATH) 
+	
+$(share_name): $(objs)
+	@echo "Linking to shared library ($@ [$(objs)])."
+	$(CXX) $(cxxflags) -o $@ $(objs) -shared $(SHARE_PATH) $(SHARE_LIB) $(STATIC_LIB)
+	@cp -f $(share_name) $(OUT_PATH) 
+	
+$(tmp_path)/%.o: $(SRC_PATH)/%.cpp $(tmp_path)/%.d
+	@echo "Compile $@ ($<)."
+	$(CXX) $(cxxflags) $(INC_PATH) -c $< -o $@
+
+$(tmp_path)/%.d: $(SRC_PATH)/%.cpp 
+	@echo "Compile $@ ($<)."
+	$(CXX) $(cxxflags) -MM $< -o $@.$$$$; \
+	sed 's,\($*\)\.o[ :]*,\1.o $@:, g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
+
+-include $(deps)
+
+clean:
+	$(RM) $(objs) $(deps) $(share_name) $(static_name) $(exe_name)
